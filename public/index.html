@@ -1,0 +1,126 @@
+
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聊天</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #121212; color: #E0E0E0; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; }
+        #main-container { display: flex; flex-direction: column; flex-grow: 1; max-height: 100vh; }
+        #messages { list-style-type: none; margin: 0; padding: 20px; overflow-y: auto; flex-grow: 1; border-bottom: 1px solid #333; }
+        #messages li { padding: 8px 12px; margin-bottom: 10px; border-radius: 5px; word-wrap: break-word; }
+        #messages li.system-message { text-align: center; color: #888; }
+        #messages li strong { color: #6E98D0; }
+        #form-container { display: flex; padding: 10px; background-color: #1E1E1E; border-top: 1px solid #333; }
+        #form { display: flex; flex-grow: 1; }
+        #input { background-color: #2D2D2D; border: 1px solid #444; color: #E0E0E0; padding: 10px; flex-grow: 1; margin-right: 10px; border-radius: 3px; }
+        button { background-color: #333; color: #E0E0E0; border: 1px solid #555; padding: 10px 15px; cursor: pointer; border-radius: 3px; }
+        button:hover { background-color: #444; }
+        #name-modal { position: fixed; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; }
+        #name-form { background-color: #1E1E1E; padding: 30px; border-radius: 5px; text-align: center; }
+        #name-input { background-color: #2D2D2D; border: 1px solid #444; color: #E0E0E0; padding: 10px; margin-bottom: 15px; border-radius: 3px; }
+        #upload-form { margin-left: 10px; }
+    </style>
+</head>
+<body>
+    <div id="name-modal">
+        <div id="name-form">
+            <h2>输入你的昵称</h2>
+            <input id="name-input" autocomplete="off" /><button id="name-button">确认加入</button>
+        </div>
+    </div>
+
+    <div id="main-container" style="display:none;">
+        <ul id="messages"></ul>
+        <div id="form-container">
+            <form id="form" action="">
+                <input id="input" autocomplete="off" /><button>发送</button>
+            </form>
+            <form id="upload-form" action="/upload" method="post" enctype="multipart/form-data">
+                <input type="file" name="file" id="file-input" style="display: none;">
+                <button type="button" id="upload-button">上传文件</button>
+                <input type="hidden" name="user" id="upload-user">
+            </form>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let user = '';
+
+        const nameModal = document.getElementById('name-modal');
+        const nameForm = document.getElementById('name-form');
+        const nameInput = document.getElementById('name-input');
+        const nameButton = document.getElementById('name-button');
+        const mainContainer = document.getElementById('main-container');
+        const messages = document.getElementById('messages');
+        const form = document.getElementById('form');
+        const input = document.getElementById('input');
+        const uploadForm = document.getElementById('upload-form');
+        const uploadButton = document.getElementById('upload-button');
+        const fileInput = document.getElementById('file-input');
+        const uploadUser = document.getElementById('upload-user');
+
+        nameButton.addEventListener('click', () => {
+            user = nameInput.value.trim();
+            if (user) {
+                nameModal.style.display = 'none';
+                mainContainer.style.display = 'flex';
+                uploadUser.value = user;
+                socket.emit('user joined', user);
+            }
+        });
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (input.value) {
+                socket.emit('chat message', { user, msg: input.value });
+                input.value = '';
+            }
+        });
+
+        uploadButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', () => {
+            const formData = new FormData(uploadForm);
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            }).then(response => {
+                if (!response.ok) {
+                    console.error('文件上传失败.');
+                }
+            }).catch(error => {
+                console.error('文件上传出现错误:', error);
+            });
+        });
+
+        socket.on('chat message', (data) => {
+            const item = document.createElement('li');
+            item.innerHTML = `<strong>${data.user}:</strong> ${data.msg}`;
+            messages.appendChild(item);
+            window.scrollTo(0, document.body.scrollHeight);
+        });
+
+        socket.on('file uploaded', (data) => {
+            const item = document.createElement('li');
+            const fileLink = `<a href="/uploads/${data.filename}" target="_blank">${data.filename}</a>`;
+            item.innerHTML = `<strong>${data.user}</strong> 上传了文件: ${fileLink}`;
+            messages.appendChild(item);
+            window.scrollTo(0, document.body.scrollHeight);
+        });
+
+        socket.on('user joined', (joinedUser) => {
+            const item = document.createElement('li');
+            item.classList.add('system-message');
+            item.textContent = `${joinedUser} 加入了聊天`;
+            messages.appendChild(item);
+            window.scrollTo(0, document.body.scrollHeight);
+        });
+    </script>
+</body>
+</html>
