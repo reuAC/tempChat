@@ -88,7 +88,7 @@ npm start
 
 ```
 /
-├── public/         # 存放前端静态文件 (HTML, CSS, JS)
+├── public/         # 存放前端静态文件 (HTML, CSS, JS)，目前仅有单个index.html文件
 ├── uploads/        # 默认的文件上传目录
 ├── package.json    # 项目依赖与脚本配置文件
 └── server.js       # 应用主服务文件
